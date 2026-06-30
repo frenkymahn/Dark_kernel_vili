@@ -136,52 +136,40 @@ jobs:
 
         echo "=== Done ==="
 
-    - name: Fix qcom_cpufreq_get_cpu_cycle_counter - Auto detect & resolve double export
+    - name: Fix qcom_cpufreq_get_cpu_cycle_counter - always provide weak stub
       run: |
-        SYM="qcom_cpufreq_get_cpu_cycle_counter"
-
         echo "=== Clean up old stubs ==="
         rm -f drivers/cpufreq/qcom-cpufreq-hw-stub.c
         sed -i '/qcom-cpufreq-hw-stub/d' drivers/cpufreq/Makefile 2>/dev/null || true
-        rm -f kernel/sched/walt/walt_stub.c
-        sed -i '/walt_stub/d' kernel/sched/walt/Makefile 2>/dev/null || true
+        rm -f kernel/sched/walt/walt_stub.c kernel/sched/walt/walt_cpufreq_stub.c
+        sed -i '/walt_stub/d;/walt_cpufreq_stub/d' kernel/sched/walt/Makefile 2>/dev/null || true
 
-        echo "=== Find all files exporting this symbol ==="
-        EXPORT_FILES=$(grep -rl "EXPORT_SYMBOL.*${SYM}" drivers/ kernel/ 2>/dev/null || true)
-        EXPORT_COUNT=$(echo "$EXPORT_FILES" | grep -c "[^[:space:]]" 2>/dev/null || echo "0")
-        echo "Export found in: ${EXPORT_FILES}"
-        echo "Count: ${EXPORT_COUNT}"
+        echo "=== Always create weak stub (real impl overrides automatically if actually linked) ==="
+        mkdir -p kernel/sched/walt
+        {
+          printf '%s\n' '#include <linux/types.h>'
+          printf '%s\n' '#include <linux/export.h>'
+          printf '%s\n' '#include <linux/ktime.h>'
+          printf '%s\n' ''
+          printf '%s\n' '/* Weak fallback: silently overridden by the linker if the real'
+          printf '%s\n' ' * qcom-cpufreq-hw implementation actually ends up compiled in.'
+          printf '%s\n' ' * This avoids relying on a fragile grep-based "is it exported?"'
+          printf '%s\n' ' * detection, which can give false positives when the real symbol'
+          printf '%s\n' ' * exists in source but is excluded from the build by a Kconfig'
+          printf '%s\n' ' * guard. */'
+          printf '%s\n' 'u64 __weak qcom_cpufreq_get_cpu_cycle_counter(int cpu)'
+          printf '%s\n' '{'
+          printf '%s\n' '        return ktime_get_ns();'
+          printf '%s\n' '}'
+          printf '%s\n' 'EXPORT_SYMBOL_GPL(qcom_cpufreq_get_cpu_cycle_counter);'
+        } > kernel/sched/walt/walt_cpufreq_stub.c
 
-        if [ "$EXPORT_COUNT" -gt 1 ]; then
-          echo "=== Double export: remove from WALT ==="
-          find kernel/sched/walt/ -name "*.c" -exec \
-            sed -i "/EXPORT_SYMBOL.*${SYM}/d" {} \; 2>/dev/null || true
-
-        elif [ "$EXPORT_COUNT" -eq 1 ]; then
-          echo "=== Single export, no action needed ==="
-
-        else
-          echo "=== 0 exports: create stub in kernel/sched/walt/ as built-in ==="
-          mkdir -p kernel/sched/walt
-          {
-            printf '%s\n' '#include <linux/types.h>'
-            printf '%s\n' '#include <linux/export.h>'
-            printf '%s\n' '#include <linux/ktime.h>'
-            printf '%s\n' ''
-            printf '%s\n' 'u64 qcom_cpufreq_get_cpu_cycle_counter(int cpu)'
-            printf '%s\n' '{'
-            printf '%s\n' '        return ktime_get_ns();'
-            printf '%s\n' '}'
-            printf '%s\n' 'EXPORT_SYMBOL_GPL(qcom_cpufreq_get_cpu_cycle_counter);'
-          } > kernel/sched/walt/walt_cpufreq_stub.c
-          if ! grep -q "walt_cpufreq_stub.o" kernel/sched/walt/Makefile 2>/dev/null; then
-            echo "obj-y += walt_cpufreq_stub.o" >> kernel/sched/walt/Makefile
-          fi
-          echo "=== Stub built-in created in kernel/sched/walt/ ==="
+        if ! grep -q "walt_cpufreq_stub.o" kernel/sched/walt/Makefile 2>/dev/null; then
+          echo "obj-y += walt_cpufreq_stub.o" >> kernel/sched/walt/Makefile
         fi
 
         echo "=== Final verification ==="
-        grep -rn "EXPORT_SYMBOL.*${SYM}" drivers/ kernel/ 2>/dev/null || echo "No exports found (this is OK if stub was created)"
+        grep -rn "qcom_cpufreq_get_cpu_cycle_counter" drivers/ kernel/ 2>/dev/null || echo "Only stub present"
 
     - name: Configure kernel
       run: |
