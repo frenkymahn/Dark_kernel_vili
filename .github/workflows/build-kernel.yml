@@ -163,17 +163,17 @@ jobs:
         else
           echo "=== 0 exports: create stub in kernel/sched/walt/ as built-in ==="
           mkdir -p kernel/sched/walt
-          cat > kernel/sched/walt/walt_cpufreq_stub.c << 'STUBEOF'
-          #include <linux/types.h>
-          #include <linux/export.h>
-          #include <linux/ktime.h>
-
-          u64 qcom_cpufreq_get_cpu_cycle_counter(int cpu)
           {
-                  return ktime_get_ns();
-          }
-          EXPORT_SYMBOL_GPL(qcom_cpufreq_get_cpu_cycle_counter);
-          STUBEOF
+            printf '%s\n' '#include <linux/types.h>'
+            printf '%s\n' '#include <linux/export.h>'
+            printf '%s\n' '#include <linux/ktime.h>'
+            printf '%s\n' ''
+            printf '%s\n' 'u64 qcom_cpufreq_get_cpu_cycle_counter(int cpu)'
+            printf '%s\n' '{'
+            printf '%s\n' '        return ktime_get_ns();'
+            printf '%s\n' '}'
+            printf '%s\n' 'EXPORT_SYMBOL_GPL(qcom_cpufreq_get_cpu_cycle_counter);'
+          } > kernel/sched/walt/walt_cpufreq_stub.c
           if ! grep -q "walt_cpufreq_stub.o" kernel/sched/walt/Makefile 2>/dev/null; then
             echo "obj-y += walt_cpufreq_stub.o" >> kernel/sched/walt/Makefile
           fi
@@ -315,26 +315,26 @@ jobs:
           echo "WARNING: No DTBO found, skipping"
         fi
 
-        cat > AnyKernel3/anykernel.sh << 'EOF'
-        kernel.string=Creek Kernel Neko - KSU-Next + SUSFS | Optimized
-        do.devicecheck=1
-        do.modules=0
-        do.systemless=1
-        do.cleanup=1
-        do.cleanuponabort=1
-        device.name1=creek
-        device.name2=RE54B
-        device.name3=RE54BL
-        supported.versions=12-14
-        block=/dev/block/bootdevice/by-name/boot
-        is_slot_device=1
-        ramdisk_compression=auto
-
-        . tools/ak3-core.sh
-
-        dump_boot
-        write_boot
-        EOF
+        {
+          printf '%s\n' 'kernel.string=Creek Kernel Neko - KSU-Next + SUSFS | Optimized'
+          printf '%s\n' 'do.devicecheck=1'
+          printf '%s\n' 'do.modules=0'
+          printf '%s\n' 'do.systemless=1'
+          printf '%s\n' 'do.cleanup=1'
+          printf '%s\n' 'do.cleanuponabort=1'
+          printf '%s\n' 'device.name1=creek'
+          printf '%s\n' 'device.name2=RE54B'
+          printf '%s\n' 'device.name3=RE54BL'
+          printf '%s\n' 'supported.versions=12-14'
+          printf '%s\n' 'block=/dev/block/bootdevice/by-name/boot'
+          printf '%s\n' 'is_slot_device=1'
+          printf '%s\n' 'ramdisk_compression=auto'
+          printf '%s\n' ''
+          printf '%s\n' '. tools/ak3-core.sh'
+          printf '%s\n' ''
+          printf '%s\n' 'dump_boot'
+          printf '%s\n' 'write_boot'
+        } > AnyKernel3/anykernel.sh
 
         cd AnyKernel3
         zip -r9 "../Creek-Kernel-Neko-${{ env.BUILD_DATE }}.zip" ./*
