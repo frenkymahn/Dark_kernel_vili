@@ -136,40 +136,12 @@ jobs:
 
         echo "=== Done ==="
 
-    - name: Fix qcom_cpufreq_get_cpu_cycle_counter - always provide weak stub
+    - name: Clean up stub leftovers (pre-config)
       run: |
-        echo "=== Clean up old stubs ==="
         rm -f drivers/cpufreq/qcom-cpufreq-hw-stub.c
         sed -i '/qcom-cpufreq-hw-stub/d' drivers/cpufreq/Makefile 2>/dev/null || true
         rm -f kernel/sched/walt/walt_stub.c kernel/sched/walt/walt_cpufreq_stub.c
         sed -i '/walt_stub/d;/walt_cpufreq_stub/d' kernel/sched/walt/Makefile 2>/dev/null || true
-
-        echo "=== Always create weak stub (real impl overrides automatically if actually linked) ==="
-        mkdir -p kernel/sched/walt
-        {
-          printf '%s\n' '#include <linux/types.h>'
-          printf '%s\n' '#include <linux/export.h>'
-          printf '%s\n' '#include <linux/ktime.h>'
-          printf '%s\n' ''
-          printf '%s\n' '/* Weak fallback: silently overridden by the linker if the real'
-          printf '%s\n' ' * qcom-cpufreq-hw implementation actually ends up compiled in.'
-          printf '%s\n' ' * This avoids relying on a fragile grep-based "is it exported?"'
-          printf '%s\n' ' * detection, which can give false positives when the real symbol'
-          printf '%s\n' ' * exists in source but is excluded from the build by a Kconfig'
-          printf '%s\n' ' * guard. */'
-          printf '%s\n' 'u64 __weak qcom_cpufreq_get_cpu_cycle_counter(int cpu)'
-          printf '%s\n' '{'
-          printf '%s\n' '        return ktime_get_ns();'
-          printf '%s\n' '}'
-          printf '%s\n' 'EXPORT_SYMBOL_GPL(qcom_cpufreq_get_cpu_cycle_counter);'
-        } > kernel/sched/walt/walt_cpufreq_stub.c
-
-        if ! grep -q "walt_cpufreq_stub.o" kernel/sched/walt/Makefile 2>/dev/null; then
-          echo "obj-y += walt_cpufreq_stub.o" >> kernel/sched/walt/Makefile
-        fi
-
-        echo "=== Final verification ==="
-        grep -rn "qcom_cpufreq_get_cpu_cycle_counter" drivers/ kernel/ 2>/dev/null || echo "Only stub present"
 
     - name: Configure kernel
       run: |
@@ -258,6 +230,34 @@ jobs:
         scripts/config --file .config -e CRYPTO_AES_ARM64_CE_BLK || true
 
         make ARCH=arm64 CC=clang CLANG_TRIPLE=aarch64-linux-gnu- LLVM=1 LLVM_IAS=1 olddefconfig
+
+    - name: Conditionally add cpufreq cycle counter stub
+      run: |
+        export PATH="${{ github.workspace }}/toolchain/clang/bin:$PATH"
+        CFG_VAL=$(grep -E "^CONFIG_QCOM_CPUFREQ_HW=" .config || echo "not-set")
+        echo "QCOM_CPUFREQ_HW config: $CFG_VAL"
+
+        if echo "$CFG_VAL" | grep -qE "=(y|m)"; then
+          echo "Real qcom-cpufreq-hw driver is enabled (${CFG_VAL}) - skipping stub entirely"
+        else
+          echo "Real driver not enabled - adding built-in stub"
+          mkdir -p kernel/sched/walt
+          {
+            printf '%s\n' '#include <linux/types.h>'
+            printf '%s\n' '#include <linux/export.h>'
+            printf '%s\n' '#include <linux/ktime.h>'
+            printf '%s\n' ''
+            printf '%s\n' 'u64 qcom_cpufreq_get_cpu_cycle_counter(int cpu)'
+            printf '%s\n' '{'
+            printf '%s\n' '        return ktime_get_ns();'
+            printf '%s\n' '}'
+            printf '%s\n' 'EXPORT_SYMBOL_GPL(qcom_cpufreq_get_cpu_cycle_counter);'
+          } > kernel/sched/walt/walt_cpufreq_stub.c
+
+          if ! grep -q "walt_cpufreq_stub.o" kernel/sched/walt/Makefile 2>/dev/null; then
+            echo "obj-y += walt_cpufreq_stub.o" >> kernel/sched/walt/Makefile
+          fi
+        fi
 
     - name: Build kernel
       run: |
