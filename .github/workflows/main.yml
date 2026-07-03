@@ -1,0 +1,79 @@
+name: Xiaomi Light Kernel Build (4.19.191 - Clang r383902)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - light-u-oss
+
+jobs:
+  build-kernel:
+    runs-on: ubuntu-22.04
+
+
+    env:
+      ARCH: arm64
+      SUBARCH: arm64
+      DEFCONFIG: light_defconfig
+      KERNEL_REPO: https://github.com/yadavmandeep8899-wq/Xiaomi_Kernel_OpenSource
+      KERNEL_BRANCH: light-u-oss
+
+    steps:
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc bison build-essential ccache curl flex git gnupg gperf \
+          imagemagick liblz4-tool libncurses5-dev libncurses-dev libsdl1.2-dev libssl-dev \
+          libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip \
+          zlib1g-dev python3 gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
+
+
+      - name: Checkout Kernel Source
+        run: |
+          echo "Cloning Xiaomi Light Kernel Source (4.19.191)..."
+          git clone --depth=1 -b ${{ env.KERNEL_BRANCH }} ${{ env.KERNEL_REPO }} kernel-source
+
+      - name: Download Official Clang-r383902
+        run: |
+          echo "Cloning Official Android Clang-r383902..."
+          mkdir -p aosp-clang
+          
+          # Android 11 branch for exact clang-r383902 / b1
+          git clone --depth=1 -b android-11.0.0_r48 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 aosp-clang
+          
+          cd aosp-clang
+          CLANG_DIR=$(ls -d clang-r383902* | head -n 1)
+          
+          echo "Using Clang Directory: $CLANG_DIR"
+          echo "CLANG_PATH=$(pwd)/$CLANG_DIR/bin" >> $GITHUB_ENV
+
+      - name: Compile Kernel
+        run: |
+          export PATH="$CLANG_PATH:$PATH"
+          cd kernel-source
+          
+          clang -v
+          
+          echo "Starting Kernel Build for Light..."
+          mkdir -p out
+          
+          # Defconfig banayein
+          make O=out ARCH=$ARCH ${{ env.DEFCONFIG }}
+          
+          # Compile kernel
+          make -j$(nproc --all) \
+            O=out \
+            ARCH=$ARCH \
+            LLVM=1 \
+            LLVM_IAS=1
+            
+          # NOTE: Agar LLVM_IAS=1 ke wajah se assembler (as) error de (kyunki 4.19 mein 
+          # kabhi-kabhi LLVM assembler backported nahi hota), toh upar se LLVM_IAS=1 
+          # hata kar niche diya gaya command use karein:
+          # make -j$(nproc --all) O=out ARCH=$ARCH CC=clang CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi-
+
+      - name: Upload Kernel Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Compiled-Kernel-Light-4.19
+          path: kernel-source/out/arch/arm64/boot/Image*
