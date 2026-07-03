@@ -1,0 +1,60 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (c) 2019 MediaTek Inc.
+ */
+
+#include "kd_imgsensor.h"
+#include "imgsensor_sensor_list.h"
+
+/* Add Sensor Init function here
+ * Note:
+ * 1. Add by the resolution from ""large to small"", due to large sensor
+ *    will be possible to be main sensor.
+ *    This can avoid I2C error during searching sensor.
+ * 2. This file should be the same as
+ *    mediatek\custom\common\hal\imgsensor\src\sensorlist.cpp
+ */
+struct IMGSENSOR_SENSOR_LIST
+	gimgsensor_sensor_list[MAX_NUM_OF_SUPPORT_SENSOR] = {
+#if defined(OV50C40_SUNNY_MAIN_MIPI_RAW)
+	{OV50C40_SUNNY_MAIN_SENSOR_ID, SENSOR_DRVNAME_OV50C40_SUNNY_MAIN_MIPI_RAW, OV50C40_SUNNY_MAIN_MIPI_RAW_SensorInit},
+#endif
+#if defined(OV50C40_AAC_MAIN_MIPI_RAW)
+	{OV50C40_AAC_MAIN_SENSOR_ID, SENSOR_DRVNAME_OV50C40_AAC_MAIN_MIPI_RAW, OV50C40_AAC_MAIN_MIPI_RAW_SensorInit},
+#endif
+#if defined(S5KJN1_OFILM_MAIN_MIPI_RAW)
+	{S5KJN1_OFILM_MAIN_SENSOR_ID, SENSOR_DRVNAME_S5KJN1_OFILM_MAIN_MIPI_RAW, S5KJN1_OFILM_MAIN_MIPI_RAW_SensorInit},
+#endif
+#if defined(HI1337_AAC_MAIN_MIPI_RAW)
+	{HI1337_AAC_MAIN_SENSOR_ID, SENSOR_DRVNAME_HI1337_AAC_MAIN_MIPI_RAW, HI1337_MIPI_RAW_SensorInit},
+#endif
+#if defined(HI1337_OFILM_MAIN_MIPI_RAW)
+	{HI1337_OFILM_MAIN_SENSOR_ID, SENSOR_DRVNAME_HI1337_OFILM_MAIN_MIPI_RAW, HI1337_OFILM_MIPI_RAW_SensorInit},
+#endif
+#if defined(GC5035_SUNNY_FRONT_MIPI_RAW)
+	{GC5035_SUNNY_FRONT_SENSOR_ID, SENSOR_DRVNAME_GC5035_SUNNY_FRONT_MIPI_RAW, GC5035_MIPI_RAW_SensorInit},
+#endif
+#if defined(HI556_OFILM_FRONT_MIPI_RAW)
+	{HI556_OFILM_FRONT_SENSOR_ID, SENSOR_DRVNAME_HI556_OFILM_FRONT_MIPI_RAW, HI556_MIPI_RAW_SensorInit},
+#endif
+#if defined(OV8856_AAC_FRONT_MIPI_RAW)
+	{OV8856_AAC_FRONT_SENSOR_ID, SENSOR_DRVNAME_OV8856_AAC_FRONT_MIPI_RAW, OV8856_AAC_MIPI_RAW_SensorInit},
+#endif
+#if defined(OV8856_OFILM_FRONT_MIPI_RAW)
+	{OV8856_OFILM_FRONT_SENSOR_ID, SENSOR_DRVNAME_OV8856_OFILM_FRONT_MIPI_RAW, OV8856_OFILM_MIPI_RAW_SensorInit},
+#endif
+#if defined(OV02B1B_SUNNY_DEPTH_MIPI_RAW)
+        {OV02B1B_SUNNY_DEPTH_SENSOR_ID, SENSOR_DRVNAME_OV02B1B_SUNNY_DEPTH_MIPI_RAW, OV02B1B_MIPI_RAW_SensorInit},
+#endif
+#if defined(SC201CS_OFILM_DEPTH_MIPI_RAW)
+	{SC201CS_OFILM_DEPTH_SENSOR_ID, SENSOR_DRVNAME_SC201CS_OFILM_DEPTH_MIPI_RAW, SC201CS_OFILM_MIPI_RAW_SensorInit},
+#endif
+#if defined(SC202CS_OFILM_DEPTH_MIPI_RAW)
+	{SC202CS_OFILM_DEPTH_SENSOR_ID, SENSOR_DRVNAME_SC202CS_OFILM_DEPTH_MIPI_RAW, SC202CS_OFILM_MIPI_RAW_SensorInit},
+#endif
+	/*  ADD sensor driver before this line */
+	{0, {0}, NULL}, /* end of list */
+};
+
+/* e_add new sensor driver here */
+
