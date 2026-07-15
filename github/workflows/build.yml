@@ -18,12 +18,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y bc build-essential libelf-dev bison flex libssl-dev git rsync unzip zip tar lz4 liblz4-tool ccache gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
 
-      - name: Download Google AOSP Clang
+      - name: Download Neutron Clang (Optimized)
         run: |
           mkdir -p clang
-          curl -LO https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r489669b.tar.gz
-          tar -xzf clang-r489669b.tar.gz -C clang
-          rm clang-r489669b.tar.gz
+          cd clang
+          curl -Lo antman https://raw.githubusercontent.com/Neutron-Toolchains/clang-releases/main/antman
+          chmod +x antman
+          ./antman -S
 
       - name: Build Kernel
         run: |
