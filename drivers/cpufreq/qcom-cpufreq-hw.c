@@ -339,6 +339,10 @@ static int qcom_cpufreq_hw_read_lut(struct device *cpu_dev,
 			freq = xo_rate * lval / 1000;
 		else
 			freq = cpu_hw_rate / 1000;
+		
+		if (freq >= 3130000 && freq <= 3150000) {
+			freq = 3500000;
+		}
 
 		if (core_count == LUT_TURBO_IND && soc_data->turbo_ind_support)
 			table[i].frequency = CPUFREQ_ENTRY_INVALID;
