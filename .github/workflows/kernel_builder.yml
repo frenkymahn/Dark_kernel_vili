@@ -16,16 +16,17 @@ jobs:
         run: |
           curl -LSs "https://raw.githubusercontent.com/rifsxd/KernelSU-Next/next/kernel/setup.sh" | bash -s next
 
-      - name: Install Dependencies & GCC-10 Toolchain
+      - name: Install Dependencies & Tools
         run: |
           sudo apt-get update && sudo apt-get install -y \
             build-essential gcc-10 g++-10 gcc-10-aarch64-linux-gnu gcc-10-arm-linux-gnueabi \
-            libncurses5-dev bison flex bc git libssl-dev wget zip cpio python3 python3-pip
+            libncurses5-dev bison flex bc git libssl-dev wget zip cpio python3 python3-pip \
+            device-tree-compiler libfaketime
           
           sudo ln -sf /usr/bin/gcc-10 /usr/bin/gcc
           sudo ln -sf /usr/bin/g++-10 /usr/bin/g++
 
-      - name: Compile Kernel with Host Fixes and Configure KernelSU & BPF
+      - name: Compile Kernel and Configure KernelSU & BPF
         run: |
           export ARCH=arm64
           export SUBARCH=arm64
@@ -46,11 +47,14 @@ jobs:
           
           make O=out olddefconfig
 
-          # Compile with explicit host tool configurations to bypass dtc error 2
+          # Clean host dtc to force use compatible host compilation flags
+          make O=out HOSTCC=gcc-10 HOSTCXX=g++-10 HOSTCFLAGS="-O3 -std=gnu89 -fcommon" clean-scripts || true
+
           make -j$(nproc) O=out \
             HOSTCC=gcc-10 \
             HOSTCXX=g++-10 \
-            HOSTCFLAGS="-O3 -std=gnu99 -fcommon" \
+            HOSTCFLAGS="-O3 -std=gnu89 -fcommon" \
+            HOSTLDFLAGS="-std=gnu89" \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
             LOCALVERSION="-Dark_kernel" \
