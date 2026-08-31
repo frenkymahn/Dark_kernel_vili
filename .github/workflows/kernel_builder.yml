@@ -32,14 +32,8 @@ jobs:
           
           mkdir -p out
           
-          # Directly copy the correct vili config from vendor folder to out/.config
-          if [ -f arch/arm64/configs/vendor/vili_GKI.config ]; then
-            cp arch/arm64/configs/vendor/vili_GKI.config out/.config
-          elif [ -f arch/arm64/configs/vendor/vili_QGKI.config ]; then
-            cp arch/arm64/configs/vendor/vili_QGKI.config out/.config
-          else
-            echo "Config not found!" && exit 1
-          fi
+          # Directly copy the correct vili config from vendor folder
+          cp arch/arm64/configs/vendor/vili_GKI.config out/.config
           
           # KernelSU Next & BPF configurations
           echo "CONFIG_KSU=y" >> out/.config
