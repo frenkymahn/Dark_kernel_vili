@@ -1,0 +1,87 @@
+name: Xiaomi 11T Pro KernelSU Next Builder
+
+on:
+  push:
+    branches: [ vili, vili-r-oss, main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout Kernel Source
+        uses: actions/checkout@v4
+
+      - name: Setup KernelSU Next
+        run: |
+          curl -LSs "https://raw.githubusercontent.com/rifsxd/KernelSU-Next/next/kernel/setup.sh" | bash -s next
+
+      - name: Install System Clang & Dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y \
+            build-essential clang lld llvm gcc-aarch64-linux-gnu libncurses5-dev \
+            bison flex bc git libssl-dev wget zip cpio python3 python3-pip
+
+      - name: Compile Kernel and Configure KernelSU & BPF
+        run: |
+          export ARCH=arm64
+          export SUBARCH=arm64
+          
+          export KBUILD_BUILD_USER="frenkymahn"
+          export KBUILD_BUILD_HOST="frenkymahn-PC"
+          
+          make O=out vili_defconfig
+          
+          # KernelSU Next & BPF & Tmpfs Xattr configurations
+          echo "CONFIG_KSU=y" >> out/.config
+          echo "CONFIG_TMPFS_XATTR=y" >> out/.config
+          echo "CONFIG_BPF=y" >> out/.config
+          echo "CONFIG_BPF_SYSCALL=y" >> out/.config
+          echo "CONFIG_BPF_JIT=y" >> out/.config
+          echo "CONFIG_NET_CLS_BPF=y" >> out/.config
+          echo "CONFIG_NET_ACT_BPF=y" >> out/.config
+          echo "CONFIG_BPF_EVENTS=y" >> out/.config
+          
+          make O=out olddefconfig
+
+          make -j$(nproc) O=out \
+            CC=clang \
+            LD=ld.lld \
+            CLANG_TRIPLE=aarch64-linux-gnu- \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            CONFIG_BUILD_ARM64_DTB_OVERLAY_IMAGE=y \
+            LOCALVERSION="-Dark_kernel"
+            
+          make O=out INSTALL_MOD_PATH=modules_install modules_install
+
+      - name: Package Images (Boot, DTB, Vendor_Boot)
+        run: |
+          mkdir -p final_images
+          
+          cp out/arch/arm64/boot/Image final_images/boot.img
+          cp out/arch/arm64/boot/Image.gz-dtb final_images/
+          
+          if [ -f out/arch/arm64/boot/dtb.img ]; then
+            cp out/arch/arm64/boot/dtb.img final_images/
+          elif [ -f out/arch/arm64/boot/dts/xiaomi/vili.dtb ]; then
+            cp out/arch/arm64/boot/dts/xiaomi/vili.dtb final_images/dtb.img
+          fi
+          
+          if [ -f out/arch/arm64/boot/dtbo.img ]; then
+            cp out/arch/arm64/boot/dtbo.img final_images/
+          fi
+
+          find out/modules_install -name "*.ko" -exec cp {} final_images/ \;
+
+          git clone https://github.com/osm0sis/AnyKernel3.git ak3
+          cp final_images/Image.gz-dtb ak3/
+          [ -f final_images/dtb.img ] && cp final_images/dtb.img ak3/dtb
+          cd ak3 && zip -r ../Xiaomi-11T-Pro-DarkKernel-KSU-Next.zip * && cd ..
+
+      - name: Upload All Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Xiaomi-11T-Pro-DarkKernel-Images
+          path: |
+            final_images/*
+            Xiaomi-11T-Pro-DarkKernel-KSU-Next.zip
