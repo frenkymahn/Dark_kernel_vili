@@ -25,7 +25,7 @@ jobs:
           sudo ln -sf /usr/bin/gcc-10 /usr/bin/gcc
           sudo ln -sf /usr/bin/g++-10 /usr/bin/g++
 
-      - name: Compile Kernel with GCC-10 and Configure KernelSU & BPF
+      - name: Compile Kernel with Host Fixes and Configure KernelSU & BPF
         run: |
           export ARCH=arm64
           export SUBARCH=arm64
@@ -46,14 +46,15 @@ jobs:
           
           make O=out olddefconfig
 
-          # Compile only target Image and dtbo to avoid extra device tree errors
+          # Compile with explicit host tool configurations to bypass dtc error 2
           make -j$(nproc) O=out \
             HOSTCC=gcc-10 \
             HOSTCXX=g++-10 \
+            HOSTCFLAGS="-O3 -std=gnu99 -fcommon" \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
             LOCALVERSION="-Dark_kernel" \
-            KCFLAGS="-Wno-error=array-bounds -Wno-error=stringop-overflow -Wno-error=unused-but-set-variable" \
+            KCFLAGS="-Wno-error=array-bounds -Wno-error=stringop-overflow -Wno-error=unused-but-set-variable -fcommon" \
             Image.gz-dtb dtbo.img
             
           make O=out INSTALL_MOD_PATH=modules_install modules_install
