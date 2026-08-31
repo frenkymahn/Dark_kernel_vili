@@ -25,8 +25,8 @@ jobs:
       - name: Setup Clang Toolchain
         run: |
           mkdir clang && cd clang
-          wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main-ui/clang-r450784d.tar.gz
-          tar -xzf clang-r450784d.tar.gz
+          wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r487747.tar.gz
+          tar -xzf clang-r487747.tar.gz
           cd ..
 
       - name: Compile Kernel and Configure KernelSU & BPF
