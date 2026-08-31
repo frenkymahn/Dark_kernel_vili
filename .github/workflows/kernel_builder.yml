@@ -16,7 +16,7 @@ jobs:
         run: |
           curl -LSs "https://raw.githubusercontent.com/rifsxd/KernelSU-Next/next/kernel/setup.sh" | bash -s next
 
-      - name: Install Dependencies & Tools for Ubuntu 20.04
+      - name: Install Dependencies & Tools
         run: |
           sudo apt-get update && sudo apt-get install -y \
             build-essential gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi \
@@ -30,7 +30,8 @@ jobs:
           export KBUILD_BUILD_USER="frenkymahn"
           export KBUILD_BUILD_HOST="frenkymahn-PC"
           
-          make O=out defconfig
+          # Use the exact vili config file found in vendor folder
+          make O=out vili_GKI_defconfig  make O=out vendor/vili_GKI.config  make O=out vili_QGKI.config
           
           echo "CONFIG_KSU=y" >> out/.config
           echo "CONFIG_TMPFS_XATTR=y" >> out/.config
@@ -43,7 +44,6 @@ jobs:
           
           make O=out olddefconfig
 
-          # Compile using standard gcc on Ubuntu 20.04 environment
           make -j$(nproc) O=out \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
