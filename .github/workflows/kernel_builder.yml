@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
     steps:
       - name: Checkout Kernel Source
         uses: actions/checkout@v4
@@ -16,14 +16,13 @@ jobs:
         run: |
           curl -LSs "https://raw.githubusercontent.com/rifsxd/KernelSU-Next/next/kernel/setup.sh" | bash -s next
 
-      - name: Install Dependencies & Tools
+      - name: Install Dependencies & Tools for Ubuntu 20.04
         run: |
           sudo apt-get update && sudo apt-get install -y \
-            build-essential gcc-10 g++-10 gcc-10-aarch64-linux-gnu gcc-10-arm-linux-gnueabi \
-            libncurses5-dev bison flex bc git libssl-dev wget zip cpio python3 python3-pip \
-            device-tree-compiler libyaml-dev
+            build-essential gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi \
+            libncurses5-dev bison flex bc git libssl-dev wget zip cpio python3 python3-pip
 
-      - name: Compile Kernel and Fix Host DTC
+      - name: Compile Kernel and Configure KernelSU & BPF
         run: |
           export ARCH=arm64
           export SUBARCH=arm64
@@ -44,27 +43,27 @@ jobs:
           
           make O=out olddefconfig
 
-          # Pre-create scripts/dtc directory in out if not exists and bypass host dtc link error
-          mkdir -p out/scripts/dtc
-          
-          # Compile kernel using system gcc-10 with relaxed warnings
+          # Compile using standard gcc on Ubuntu 20.04 environment
           make -j$(nproc) O=out \
-            HOSTCC=gcc-10 \
-            HOSTCXX=g++-10 \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
             LOCALVERSION="-Dark_kernel" \
-            KCFLAGS="-Wno-error=array-bounds -Wno-error=stringop-overflow -Wno-error=unused-but-set-variable -fcommon" \
-            Image.gz dtbo.img || { echo "=== BUILD FAILED ==="; exit 1; }
+            Image.gz-dtb dtbo.img
             
+          make O=out INSTALL_MOD_PATH=modules_install modules_install
+
       - name: Package Images
         run: |
           mkdir -p final_images
-          cp out/arch/arm64/boot/Image final_images/boot.img
-          [ -f out/arch/arm64/boot/dtbo.img ] && cp out/arch/arm64/boot/dtbo.img final_images/
+          cp out/arch/arm64/boot/Image.gz-dtb final_images/
           
+          if [ -f out/arch/arm64/boot/dtbo.img ]; then
+            cp out/arch/arm64/boot/dtbo.img final_images/
+          fi
+
           git clone https://github.com/osm0sis/AnyKernel3.git ak3
-          cp out/arch/arm64/boot/Image ak3/
+          cp final_images/Image.gz-dtb ak3/
+          [ -f final_images/dtbo.img ] && cp final_images/dtbo.img ak3/dtbo.img
           cd ak3 && zip -r ../Xiaomi-11T-Pro-DarkKernel-KSU-Next.zip * && cd ..
 
       - name: Upload All Artifacts
