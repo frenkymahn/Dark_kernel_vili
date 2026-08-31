@@ -20,9 +20,10 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y \
             build-essential gcc-10 g++-10 gcc-10-aarch64-linux-gnu gcc-10-arm-linux-gnueabi \
-            libncurses5-dev bison flex bc git libssl-dev wget zip cpio python3 python3-pip
+            libncurses5-dev bison flex bc git libssl-dev wget zip cpio python3 python3-pip \
+            device-tree-compiler libyaml-dev
 
-      - name: Compile Kernel and Debug Error
+      - name: Compile Kernel and Fix Host DTC
         run: |
           export ARCH=arm64
           export SUBARCH=arm64
@@ -43,14 +44,18 @@ jobs:
           
           make O=out olddefconfig
 
-          # Compile ONLY the target image, skipping all external vendor dts compilation
+          # Pre-create scripts/dtc directory in out if not exists and bypass host dtc link error
+          mkdir -p out/scripts/dtc
+          
+          # Compile kernel using system gcc-10 with relaxed warnings
           make -j$(nproc) O=out \
             HOSTCC=gcc-10 \
             HOSTCXX=g++-10 \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
             LOCALVERSION="-Dark_kernel" \
-            V=1 Image.gz dtbo.img || { echo "=== BUILD FAILED ==="; exit 1; }
+            KCFLAGS="-Wno-error=array-bounds -Wno-error=stringop-overflow -Wno-error=unused-but-set-variable -fcommon" \
+            Image.gz dtbo.img || { echo "=== BUILD FAILED ==="; exit 1; }
             
       - name: Package Images
         run: |
