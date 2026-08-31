@@ -24,13 +24,11 @@ jobs:
 
       - name: Setup Clang Toolchain
         run: |
-          git clone --depth=1 https://github.com/KD-Kernel-Collection/aarch64-linux-android-ld.lld clang
-          # അല്ലെങ്കിൽ സ്റ്റേബിൾ ആയ വേറെയൊരു പ്രീബിൽറ്റ് ക്ലാംഗ് പാത്ത് സെറ്റ് ചെയ്യാം
-          if [ ! -d "clang/bin" ]; then
-            mkdir -p clang && wget -O clang.tar.gz https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/master/clang-r416183b.tar.gz
-            tar -C clang -xzf clang.tar.gz
-            rm clang.tar.gz
-          fi
+          mkdir -p clang
+          wget -O clang.tar.gz https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/master/clang-r416183b.tar.gz || \
+          wget -O clang.tar.gz https://github.com/XiaoleGun/Toolchains/releases/download/17.0.6/clang-17.0.6-linux-x86_64.tar.gz
+          tar -C clang -xzf clang.tar.gz
+          rm clang.tar.gz
 
       - name: Compile Kernel and Configure KernelSU & BPF
         run: |
