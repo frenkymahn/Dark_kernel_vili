@@ -3,6 +3,7 @@ name: Xiaomi 11T Pro KernelSU Next Builder
 on:
   push:
     branches: [ vili, vili-r-oss, main ]
+  workflow_dispatch:
 
 jobs:
   build:
