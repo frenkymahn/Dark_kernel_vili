@@ -16,17 +16,35 @@ jobs:
         run: |
           curl -LSs "https://raw.githubusercontent.com/rifsxd/KernelSU-Next/next/kernel/setup.sh" | bash -s next
 
-      - name: Install Dependencies & Clang Toolchain
+      - name: Install Dependencies
         run: |
           sudo apt-get update && sudo apt-get install -y \
-            build-essential clang lld llvm gcc-aarch64-linux-gnu libncurses5-dev \
+            build-essential gcc-aarch64-linux-gnu libncurses5-dev \
             bison flex bc git libssl-dev wget zip cpio python3 python3-pip
+
+      - name: Setup Clang Toolchain
+        run: |
+          mkdir -p clang
+          wget -O clang.tar.gz https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r450784d.tar.gz || \
+          wget -O clang.tar.gz https://github.com/chenxiaolong/CP-Toolchains/releases/download/v18.1.4-20240331/aarch64-linux-android-ld.lld-18.1.4.tar.gz
+          tar -C clang -xzf clang.tar.gz || true
+          rm -f clang.tar.gz
 
       - name: Compile Kernel and Configure KernelSU & BPF
         run: |
           export ARCH=arm64
           export SUBARCH=arm64
           
+          # Check if clang bin exists, else use system
+          if [ -d "clang/bin" ]; then
+            export PATH="$(pwd)/clang/bin:$PATH"
+            CC_COMP=clang
+            LD_COMP=ld.lld
+          else
+            CC_COMP=clang
+            LD_COMP=lld
+          fi
+
           export KBUILD_BUILD_USER="frenkymahn"
           export KBUILD_BUILD_HOST="frenkymahn-PC"
           
@@ -45,8 +63,8 @@ jobs:
           make O=out olddefconfig
 
           make -j$(nproc) O=out \
-            CC=clang \
-            LD=ld.lld \
+            CC=$CC_COMP \
+            LD=$LD_COMP \
             CLANG_TRIPLE=aarch64-linux-gnu- \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CONFIG_BUILD_ARM64_DTB_OVERLAY_IMAGE=y \
