@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout Kernel Source
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup KernelSU Next
         run: |
@@ -86,7 +86,7 @@ jobs:
           cd ak3 && zip -r ../Xiaomi-11T-Pro-DarkKernel-KSU-Next.zip * && cd ..
 
       - name: Upload All Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: Xiaomi-11T-Pro-DarkKernel-Images
           path: |
