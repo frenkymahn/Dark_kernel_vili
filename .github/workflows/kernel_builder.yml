@@ -30,7 +30,7 @@ jobs:
           export KBUILD_BUILD_USER="frenkymahn"
           export KBUILD_BUILD_HOST="frenkymahn-PC"
           
-          make O=out vili_defconfig
+          make O=out defconfig
           
           # KernelSU Next & BPF & Tmpfs Xattr configurations
           echo "CONFIG_KSU=y" >> out/.config
