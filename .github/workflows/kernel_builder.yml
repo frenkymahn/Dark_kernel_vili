@@ -20,13 +20,9 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y \
             build-essential gcc-10 g++-10 gcc-10-aarch64-linux-gnu gcc-10-arm-linux-gnueabi \
-            libncurses5-dev bison flex bc git libssl-dev wget zip cpio python3 python3-pip \
-            device-tree-compiler libfaketime
-          
-          sudo ln -sf /usr/bin/gcc-10 /usr/bin/gcc
-          sudo ln -sf /usr/bin/g++-10 /usr/bin/g++
+            libncurses5-dev bison flex bc git libssl-dev wget zip cpio python3 python3-pip
 
-      - name: Compile Kernel and Configure KernelSU & BPF
+      - name: Compile Kernel and Debug Error
         run: |
           export ARCH=arm64
           export SUBARCH=arm64
@@ -47,35 +43,21 @@ jobs:
           
           make O=out olddefconfig
 
-          # Clean host dtc to force use compatible host compilation flags
-          make O=out HOSTCC=gcc-10 HOSTCXX=g++-10 HOSTCFLAGS="-O3 -std=gnu89 -fcommon" clean-scripts || true
-
+          # Compile with V=1 (Verbose mode) to print the exact compilation command and error lines
           make -j$(nproc) O=out \
             HOSTCC=gcc-10 \
             HOSTCXX=g++-10 \
-            HOSTCFLAGS="-O3 -std=gnu89 -fcommon" \
-            HOSTLDFLAGS="-std=gnu89" \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
             LOCALVERSION="-Dark_kernel" \
-            KCFLAGS="-Wno-error=array-bounds -Wno-error=stringop-overflow -Wno-error=unused-but-set-variable -fcommon" \
-            Image.gz-dtb dtbo.img
+            V=1 || { echo "=== BUILD FAILED, CHECK ABOVE LOGS FOR EXACT ERROR ==="; exit 1; }
             
-          make O=out INSTALL_MOD_PATH=modules_install modules_install
-
-      - name: Package Images (Boot, DTB, Vendor_Boot)
+      - name: Package Images
         run: |
           mkdir -p final_images
-          
           cp out/arch/arm64/boot/Image final_images/boot.img
           cp out/arch/arm64/boot/Image.gz-dtb final_images/
           
-          if [ -f out/arch/arm64/boot/dtbo.img ]; then
-            cp out/arch/arm64/boot/dtbo.img final_images/
-          fi
-
-          find out/modules_install -name "*.ko" -exec cp {} final_images/ \;
-
           git clone https://github.com/osm0sis/AnyKernel3.git ak3
           cp final_images/Image.gz-dtb ak3/
           cd ak3 && zip -r ../Xiaomi-11T-Pro-DarkKernel-KSU-Next.zip * && cd ..
