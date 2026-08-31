@@ -22,7 +22,6 @@ jobs:
             build-essential gcc-10 g++-10 gcc-10-aarch64-linux-gnu gcc-10-arm-linux-gnueabi \
             libncurses5-dev bison flex bc git libssl-dev wget zip cpio python3 python3-pip
           
-          # Set GCC-10 as default for compatibility
           sudo ln -sf /usr/bin/gcc-10 /usr/bin/gcc
           sudo ln -sf /usr/bin/g++-10 /usr/bin/g++
 
@@ -36,7 +35,6 @@ jobs:
           
           make O=out defconfig
           
-          # KernelSU Next & BPF & Tmpfs Xattr configurations
           echo "CONFIG_KSU=y" >> out/.config
           echo "CONFIG_TMPFS_XATTR=y" >> out/.config
           echo "CONFIG_BPF=y" >> out/.config
@@ -48,15 +46,15 @@ jobs:
           
           make O=out olddefconfig
 
-          # Compile using GCC-10 with strict options bypassed
+          # Compile only target Image and dtbo to avoid extra device tree errors
           make -j$(nproc) O=out \
             HOSTCC=gcc-10 \
             HOSTCXX=g++-10 \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
-            CONFIG_BUILD_ARM64_DTB_OVERLAY_IMAGE=y \
             LOCALVERSION="-Dark_kernel" \
-            KCFLAGS="-Wno-error=array-bounds -Wno-error=stringop-overflow -Wno-error=unused-but-set-variable"
+            KCFLAGS="-Wno-error=array-bounds -Wno-error=stringop-overflow -Wno-error=unused-but-set-variable" \
+            Image.gz-dtb dtbo.img
             
           make O=out INSTALL_MOD_PATH=modules_install modules_install
 
@@ -67,12 +65,6 @@ jobs:
           cp out/arch/arm64/boot/Image final_images/boot.img
           cp out/arch/arm64/boot/Image.gz-dtb final_images/
           
-          if [ -f out/arch/arm64/boot/dtb.img ]; then
-            cp out/arch/arm64/boot/dtb.img final_images/
-          elif [ -f out/arch/arm64/boot/dts/xiaomi/vili.dtb ]; then
-            cp out/arch/arm64/boot/dts/xiaomi/vili.dtb final_images/dtb.img
-          fi
-          
           if [ -f out/arch/arm64/boot/dtbo.img ]; then
             cp out/arch/arm64/boot/dtbo.img final_images/
           fi
@@ -81,7 +73,6 @@ jobs:
 
           git clone https://github.com/osm0sis/AnyKernel3.git ak3
           cp final_images/Image.gz-dtb ak3/
-          [ -f final_images/dtb.img ] && cp final_images/dtb.img ak3/dtb
           cd ak3 && zip -r ../Xiaomi-11T-Pro-DarkKernel-KSU-Next.zip * && cd ..
 
       - name: Upload All Artifacts
