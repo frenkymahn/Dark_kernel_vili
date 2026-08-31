@@ -43,23 +43,23 @@ jobs:
           
           make O=out olddefconfig
 
-          # Compile with V=1 (Verbose mode) to print the exact compilation command and error lines
+          # Compile ONLY the target image, skipping all external vendor dts compilation
           make -j$(nproc) O=out \
             HOSTCC=gcc-10 \
             HOSTCXX=g++-10 \
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
             LOCALVERSION="-Dark_kernel" \
-            V=1 || { echo "=== BUILD FAILED, CHECK ABOVE LOGS FOR EXACT ERROR ==="; exit 1; }
+            V=1 Image.gz dtbo.img || { echo "=== BUILD FAILED ==="; exit 1; }
             
       - name: Package Images
         run: |
           mkdir -p final_images
           cp out/arch/arm64/boot/Image final_images/boot.img
-          cp out/arch/arm64/boot/Image.gz-dtb final_images/
+          [ -f out/arch/arm64/boot/dtbo.img ] && cp out/arch/arm64/boot/dtbo.img final_images/
           
           git clone https://github.com/osm0sis/AnyKernel3.git ak3
-          cp final_images/Image.gz-dtb ak3/
+          cp out/arch/arm64/boot/Image ak3/
           cd ak3 && zip -r ../Xiaomi-11T-Pro-DarkKernel-KSU-Next.zip * && cd ..
 
       - name: Upload All Artifacts
